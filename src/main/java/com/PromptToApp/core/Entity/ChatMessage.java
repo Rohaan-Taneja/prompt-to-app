@@ -24,8 +24,8 @@ public class ChatMessage extends BaseEntity {
     private Project project;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn()
-    private User user;
+    @JoinColumn(name = "project_member")
+    private ProjectMember projectMember;
 
     private String content;
 
@@ -33,7 +33,4 @@ public class ChatMessage extends BaseEntity {
 
     @Enumerated(EnumType.STRING)
     private ChatBy chatBy;
-
-//    enum for chat written by whom , need to understand that
-
 }

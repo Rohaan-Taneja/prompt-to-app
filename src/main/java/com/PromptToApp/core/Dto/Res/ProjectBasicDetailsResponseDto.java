@@ -1,6 +1,9 @@
 package com.PromptToApp.core.Dto.Res;
 
+import lombok.Builder;
+
 import java.util.UUID;
 
-public record ProjectBasicDetailsResponseDto(UUID project_id , String name , String description) {
+@Builder
+public record ProjectBasicDetailsResponseDto(UUID project_id, String name, String description) {
 }

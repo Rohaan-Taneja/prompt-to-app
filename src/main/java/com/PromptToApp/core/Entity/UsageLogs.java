@@ -24,7 +24,7 @@ public class UsageLogs extends BaseEntity{
     private User user;
 
     @ManyToOne()
-    @JoinColumn
+    @JoinColumn()
     private Project project;
 
     private String prompt;

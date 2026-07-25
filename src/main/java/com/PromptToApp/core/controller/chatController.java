@@ -13,6 +13,8 @@ import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 import reactor.core.publisher.Flux;
 
+import java.util.UUID;
+
 @RestController
 @RequestMapping("chat")
 @RequiredArgsConstructor
@@ -25,7 +27,7 @@ public class chatController {
     @PostMapping(value = "get-chat-response", produces = MediaType.TEXT_EVENT_STREAM_VALUE)
     public Flux<ServerSentEvent<String>> getUserResponse(@Valid @RequestBody() chatRequestDto chatRequest) {
 
-        return ai_generation_service.getChatResponse(chatRequest)
+        return ai_generation_service.getChatResponse(chatRequest.projectId() , chatRequest.chatMessage())
                 .map((event) ->
                         ServerSentEvent
                                 .<String>builder()

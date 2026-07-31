@@ -10,7 +10,6 @@ import lombok.NoArgsConstructor;
 import java.util.UUID;
 
 
-//need to undesratdn how chats are stored
 @Entity
 @Data
 @Builder
@@ -29,7 +28,7 @@ public class ChatMessage extends BaseEntity {
 
     private String content;
 
-    private String tokenConsumed;
+    private Integer tokenConsumed;
 
     @Enumerated(EnumType.STRING)
     private ChatBy chatBy;

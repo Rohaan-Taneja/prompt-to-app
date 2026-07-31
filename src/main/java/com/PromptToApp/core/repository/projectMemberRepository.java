@@ -14,7 +14,12 @@ public interface projectMemberRepository extends JpaRepository<ProjectMember , U
     @Query("""
                 SELECT pm.projectMemberRole FROM ProjectMember pm
                 WHERE pm.member.id = :userId
-                AND pm.project = :projectId
+                AND pm.project.id = :projectId
 """)
     Optional<ProjectMemberRole> checkUserAccessToProject(@Param("userId") UUID userId , @Param("projectId") UUID projectId);
+
+    Optional<ProjectMember> findByProjectIdAndMemberId(UUID projectId , UUID memberId);
+
+
 }
+

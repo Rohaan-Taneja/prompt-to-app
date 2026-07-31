@@ -15,4 +15,6 @@ public interface fileService {
 
 
     ProjectFileDetailsResDto updatedProjectFileContent(UUID userId, UUID projectId, UUID fileId);
+
+    void addOrUpdateFile(UUID projectId , String filePath , String fileContent);
 }

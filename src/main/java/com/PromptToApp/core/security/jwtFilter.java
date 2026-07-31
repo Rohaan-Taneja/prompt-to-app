@@ -34,6 +34,12 @@ public class jwtFilter extends OncePerRequestFilter {
 
     private final HandlerExceptionResolver handlerExceptionResolver;
 
+
+    @Override
+    protected boolean shouldNotFilterAsyncDispatch() {
+        return false; // allow this filter to also run on ASYNC dispatch
+    }
+
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response, FilterChain filterChain) throws ServletException, IOException {
 

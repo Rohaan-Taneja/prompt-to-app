@@ -36,10 +36,10 @@ import java.util.UUID;
 public class stripePaymentServiceImpl implements paymentProcessor {
 
 
-    @Value("${payment_success_url}")
+    @Value("${payment.success.url}")
     private String paymentSuccessUrl;
 
-    @Value("${payment_fail_url}")
+    @Value("${payment.fail.url}")
     private String paymentFailsUrl;
 
     private final userSubscriptionRepository userSubscriptionRepo;

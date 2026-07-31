@@ -3,6 +3,7 @@ package com.PromptToApp.core.security;
 import com.PromptToApp.core.enums.ProjectMemberRole;
 import com.PromptToApp.core.repository.projectMemberRepository;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Component;
 
 import java.util.UUID;
@@ -10,6 +11,7 @@ import java.util.UUID;
 /**
  *  it contain function to check if the provided user is a project memeber of the project or not
  */
+@Slf4j
 @Component(value = "securityAccessChecker")
 @RequiredArgsConstructor
 public class securityAccessCheck {
@@ -42,9 +44,15 @@ public class securityAccessCheck {
     public boolean checkUserAccessAndEditToProject(UUID projectId) {
         UUID userId = auth_util_service.getUserId();
 
-        return project_member_repo.checkUserAccessToProject(userId, projectId)
+        log.info("I am role check of user");
+        boolean val = project_member_repo.checkUserAccessToProject(userId, projectId)
                 .map(role -> role.equals(ProjectMemberRole.OWNER) || role.equals(ProjectMemberRole.EDITOR))
                 .orElse(false);
+
+
+        log.info("user access {}" , val);
+
+        return val;
 
     }
 }

@@ -9,12 +9,14 @@ import java.util.UUID;
 public interface fileService {
 
 
-    List<FileResDto> getProjectFilesTree(UUID userId, UUID projectId);
+    List<FileResDto> getProjectFilesTree(UUID projectId);
 
-    ProjectFileDetailsResDto getProjectFileContent(UUID userId, UUID projectId  ,UUID fileId);
+    ProjectFileDetailsResDto getProjectFileContent(UUID fileId);
 
 
     ProjectFileDetailsResDto updatedProjectFileContent(UUID userId, UUID projectId, UUID fileId);
 
-    void addOrUpdateFile(UUID projectId , String filePath , String fileContent);
+    void addOrUpdateFile(UUID projectId , String filePath , String fileContent , UUID userId);
+
+    void copyReactTemplateForNewProject(UUID projectId , String projectName , UUID userId);
 }

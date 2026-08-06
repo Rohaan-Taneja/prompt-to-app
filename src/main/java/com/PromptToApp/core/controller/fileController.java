@@ -22,7 +22,7 @@ public class fileController {
 
         UUID userId = UUID.randomUUID();
 
-        return ResponseEntity.ok(file_service.getProjectFilesTree(userId , projectId));
+        return ResponseEntity.ok(file_service.getProjectFilesTree(projectId));
 
     }
 
@@ -32,7 +32,7 @@ public class fileController {
 
         UUID userId = UUID.randomUUID();
 
-        return ResponseEntity.ok(file_service.getProjectFileContent(userId , projectId , fileId));
+        return ResponseEntity.ok(file_service.getProjectFileContent(fileId));
 
     }
 

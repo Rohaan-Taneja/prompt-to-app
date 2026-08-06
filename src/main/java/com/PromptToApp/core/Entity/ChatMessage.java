@@ -26,6 +26,7 @@ public class ChatMessage extends BaseEntity {
     @JoinColumn(name = "project_member")
     private ProjectMember projectMember;
 
+    @Column(columnDefinition = "TEXT")
     private String content;
 
     private Integer tokenConsumed;

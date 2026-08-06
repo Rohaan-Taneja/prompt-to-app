@@ -11,19 +11,23 @@ import lombok.NoArgsConstructor;
 @Builder
 @NoArgsConstructor
 @AllArgsConstructor
-@Table
+@Table(
+  indexes = {
+          @Index(name = "idx_project_id" , columnList = "project")
+  }
+)
 public class ProjectFile extends BaseEntity{
 
     private String name;
 
     @ManyToOne(fetch = FetchType.LAZY)
-    @JoinColumn(name = "project_id")
+    @JoinColumn(name = "project")
     private Project project;
 
     @Column( comment = "the path of the file in the project , we will be placing the file in project through this path")
     private String path;
 
-    @Column(name = "content" , comment = "we will be storing the file id stored in Min.io storage")
+    @Column(comment = "we will be storing the file id stored in Min.io storage")
     private String minIoObjectKey;
 
     @ManyToOne

@@ -50,7 +50,7 @@ public class aiGenerationServiceImpl implements aiGenerationService {
     private final securityAccessCheck security_access_check;
 
 
-    private final Pattern chatPattern = Pattern.compile("<chat>(.*?)</chat>", Pattern.CASE_INSENSITIVE);
+    private final Pattern chatPattern = Pattern.compile("<chat>(.*?)</chat>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
     private final Pattern filePattern = Pattern.compile("<file\\s+path=\"([^\"]+)\">(.*?)</file>", Pattern.DOTALL); // dotall is for multiline matcher
 
 
@@ -90,7 +90,7 @@ public class aiGenerationServiceImpl implements aiGenerationService {
         log.info("found token quota on the user {}", user_today_token_usage);
 
 //        daily token quota check
-        if (user_today_token_usage.equals(max_token_per_day)) {
+        if (user_today_token_usage.equals(max_token_per_day) || user_today_token_usage > max_token_per_day) {
             throw new customBadRequestException("token usage limit has reached for today");
 
         }
@@ -108,15 +108,14 @@ public class aiGenerationServiceImpl implements aiGenerationService {
          */
 
         Flux<ChatResponse> chatResponseFlux = chatClient.prompt()
-                .system(SystemPrompt.getSystemPrompt())
                 .user(chatMessage)
-                .advisors()
+                .advisors(a -> a.param("projectId" , projectId)) // from here we can do task between user prompt given adn llm receiving the prompt
                 .stream()
                 .chatResponse()
                 .doOnNext(stream_message ->
                         {
-                            System.out.println("current thread running in rector flow , do on next" + Thread.currentThread().getName());
-                            log.info("this is he chat stream data {}", stream_message.getResults());
+//                            System.out.println("current thread running in rector flow , do on next" + Thread.currentThread().getName());
+//                            log.info("this is he chat stream data {}", stream_message.getResults());
 
                             /**
                              * we will get the response chunks and see as we get </chat> , we will save and send this chat response to client
@@ -152,7 +151,7 @@ public class aiGenerationServiceImpl implements aiGenerationService {
                             }).subscribeOn(Schedulers.boundedElastic())
                             .doOnSubscribe(var -> log.info("saved the chats and files to db"))
                             .doOnError(e -> log.info("getting while saving the chats and file updates -> {}", e.toString()))
-                            .retry(3)
+                            .retry(0)
                             .subscribe();
 
                 })
@@ -212,12 +211,13 @@ public class aiGenerationServiceImpl implements aiGenerationService {
 
 //        everytime it finds a match to <file path ="">...</file> , it will return us the data
         while (fileMatched.find()) {
+            log.info("we found file matched");
 //            getting the file path and file content (at group = 0 is complete <file></file> thing)
             String filePath = fileMatched.group(1);
             String fileContent = fileMatched.group(2).trim();
 
 //            save the file to the project file
-            fileService.addOrUpdateFile(projectId, filePath, fileContent);
+            fileService.addOrUpdateFile(projectId, filePath, fileContent ,  user_id);
         }
 
 

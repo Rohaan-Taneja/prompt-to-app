@@ -163,7 +163,7 @@ public class SystemPrompt {
                 
                 Each changed or newly created file:
                 
-                <file file_path="src/components/Button.jsx">
+                <file path="src/components/Button.jsx">
                 COMPLETE FILE CONTENT
                 </file>
                 

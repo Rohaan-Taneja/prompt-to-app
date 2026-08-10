@@ -1,9 +1,6 @@
 package com.PromptToApp.core.Entity;
 
-import jakarta.persistence.Column;
-import jakarta.persistence.Entity;
-import jakarta.persistence.OneToOne;
-import jakarta.persistence.Table;
+import jakarta.persistence.*;
 import lombok.*;
 import org.springframework.security.core.GrantedAuthority;
 import org.springframework.security.core.userdetails.UserDetails;
@@ -13,7 +10,12 @@ import java.util.List;
 import java.util.UUID;
 
 @Entity
-@Table(name = "app_user")
+@Table(
+        name = "app_user",
+        indexes = {
+                @Index(name = "idx_user_email", columnList = "email")
+        }
+)
 @Data
 @Builder
 @NoArgsConstructor

@@ -1,8 +1,7 @@
 package com.PromptToApp.core.configuration;
 
-import com.PromptToApp.core.advisors.getFileContentAdvisorTool;
-import com.PromptToApp.core.advisors.projectTreeAdvisor;
-import com.PromptToApp.core.service.fileService;
+import com.PromptToApp.core.advisors_and_tools.getFileContentAdvisorTool;
+import com.PromptToApp.core.advisors_and_tools.projectTreeAdvisor;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.ai.chat.client.ChatClient;

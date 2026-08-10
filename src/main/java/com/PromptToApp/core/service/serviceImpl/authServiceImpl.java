@@ -17,6 +17,7 @@ import com.PromptToApp.core.repository.userSubscriptionRepository;
 import com.PromptToApp.core.security.authUtilService;
 import com.PromptToApp.core.service.authService;
 import jakarta.transaction.Transactional;
+import lombok.Data;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
@@ -27,6 +28,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 
 import java.time.LocalDateTime;
+import java.util.Date;
 import java.util.UUID;
 
 @Service
@@ -61,17 +63,33 @@ public class authServiceImpl implements authService {
      */
     public userAuthResponseDto signUp(SignUpReqDto signUpUserData) {
 
-//        todo
-//        when new user signs up , we will create a plan for user (free tier plan)
+        long totalStart = System.nanoTime();
+
+        log.info("Signup started");
+
+        // Check if user already exists
+        long start = System.nanoTime();
 
         user_repo.findByEmail(signUpUserData.email()).ifPresent(user -> {
-
-            throw new ResourceAlreadyPresent("user already present , please login instead");
-
+            throw new ResourceAlreadyPresent("user already present, please login instead");
         });
 
+        log.info("findByEmail completed in {} ms",
+                (System.nanoTime() - start) / 1_000_000);
 
-        String hashedPassword = passwordEncoder.encode(signUpUserData.password());
+
+        // Password hashing
+        start = System.nanoTime();
+
+        String hashedPassword =
+                passwordEncoder.encode(signUpUserData.password());
+
+        log.info("Password encoding completed in {} ms",
+                (System.nanoTime() - start) / 1_000_000);
+
+
+        // Create user object
+        start = System.nanoTime();
 
         User newUser = User.builder()
                 .name(signUpUserData.name())
@@ -80,31 +98,64 @@ public class authServiceImpl implements authService {
                 .jti(null)
                 .build();
 
-
         UUID jti = UUID.randomUUID();
-
-//        storing refresh token id for later verification of refresh token
         newUser.setJti(jti);
+
+        log.info("User object creation completed in {} ms",
+                (System.nanoTime() - start) / 1_000_000);
+
+
+        // Save user
+        start = System.nanoTime();
 
         User savedUser = user_repo.save(newUser);
 
-//        creating user subscription object for new sign up
+        log.info("User DB save completed in {} ms",
+                (System.nanoTime() - start) / 1_000_000);
+
+
+        // Create subscription
+        start = System.nanoTime();
+
         createUserSubscription(savedUser);
 
-//        create user subscription object for new user , by default free plan will be added
+        log.info("Subscription creation completed in {} ms",
+                (System.nanoTime() - start) / 1_000_000);
 
 
-        String accessToken = auth_util_service.createAccessToken(newUser.getId());
-        String refreshToken = auth_util_service.createRefreshToken(newUser.getId(), jti);
+        // JWT creation
+        start = System.nanoTime();
+
+        String accessToken =
+                auth_util_service.createAccessToken(newUser.getId());
+
+        String refreshToken =
+                auth_util_service.createRefreshToken(newUser.getId(), jti);
+
+        log.info("JWT creation completed in {} ms",
+                (System.nanoTime() - start) / 1_000_000);
+
 
         log.info("new user created {}", savedUser);
 
+        UserProfileResponseDto userProfileResponseDto =
+                UserProfileResponseDto.builder()
+                        .id(savedUser.getId())
+                        .email(savedUser.getEmail())
+                        .name(savedUser.getName())
+                        .role("admin")
+                        .build();
 
-        UserProfileResponseDto userProfileResponseDto = UserProfileResponseDto.builder().id(savedUser.getId()).email(savedUser.getEmail()).name(savedUser.getName()).role("admin").build();
 
-        return userAuthResponseDto.builder().accessToken(accessToken).refreshToken(refreshToken).userProfileResponse(userProfileResponseDto).build();
+        log.info("Total signup time: {} ms",
+                (System.nanoTime() - totalStart) / 1_000_000);
+
+        return userAuthResponseDto.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .userProfileResponse(userProfileResponseDto)
+                .build();
     }
-
 
     /**
      *
@@ -113,10 +164,20 @@ public class authServiceImpl implements authService {
      */
     public userAuthResponseDto login(loginReqDto userData) {
 
-//        it will authenticate user
-        Authentication authResult = authenticationManager.authenticate(new UsernamePasswordAuthenticationToken(userData.email(), userData.password()));
+        long start = System.nanoTime();
 
-        log.info("authentication doe with auth manager");
+        log.info("Login started");
+
+        Authentication authResult =
+                authenticationManager.authenticate(
+                        new UsernamePasswordAuthenticationToken(
+                                userData.email(),
+                                userData.password()
+                        )
+                );
+
+        log.info("Authentication completed in {} ms",
+                (System.nanoTime() - start) / 1_000_000);
 
         if (!authResult.isAuthenticated()) {
             throw new ResourceNotFoundException("email or password is wrong");
@@ -124,25 +185,45 @@ public class authServiceImpl implements authService {
 
         User authUser = (User) authResult.getPrincipal();
 
-        String accessToken = auth_util_service.createAccessToken(authUser.getId());
+        long tokenStart = System.nanoTime();
 
-        log.info("access token creaetd");
+        String accessToken =
+                auth_util_service.createAccessToken(authUser.getId());
 
-//      refresh token will store user id and jwt token Id(refresh token id) also for /refresh token verification Part
         UUID jti = UUID.randomUUID();
-        String refreshToken = auth_util_service.createRefreshToken(authUser.getId(), jti);
+
+        String refreshToken =
+                auth_util_service.createRefreshToken(authUser.getId(), jti);
+
+        log.info("Token creation completed in {} ms",
+                (System.nanoTime() - tokenStart) / 1_000_000);
 
         authUser.setJti(jti);
 
+        long dbStart = System.nanoTime();
+
         user_repo.save(authUser);
 
-        UserProfileResponseDto userProfileResponseDto = UserProfileResponseDto.builder().id(authUser.getId()).email(authUser.getEmail()).name(authUser.getName()).role("admin").build();
+        log.info("User DB save completed in {} ms",
+                (System.nanoTime() - dbStart) / 1_000_000);
 
-        return userAuthResponseDto.builder().accessToken(accessToken).refreshToken(refreshToken).userProfileResponse(userProfileResponseDto).build();
+        UserProfileResponseDto userProfileResponseDto =
+                UserProfileResponseDto.builder()
+                        .id(authUser.getId())
+                        .email(authUser.getEmail())
+                        .name(authUser.getName())
+                        .role("admin")
+                        .build();
 
+        log.info("Total login time: {} ms",
+                (System.nanoTime() - start) / 1_000_000);
+
+        return userAuthResponseDto.builder()
+                .accessToken(accessToken)
+                .refreshToken(refreshToken)
+                .userProfileResponse(userProfileResponseDto)
+                .build();
     }
-
-
     /**
      *
      * @param user

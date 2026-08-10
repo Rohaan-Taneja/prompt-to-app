@@ -19,4 +19,8 @@ public interface projectFileRepository extends JpaRepository<ProjectFile , UUID>
         WHERE pf.project.id = :project_id
 """)
     List<ProjectFile> getFileTree(@Param("project_id") UUID project_id);
+
+
+
+    List<ProjectFile> findAllByIdIn(List<UUID> file_ids);
 }

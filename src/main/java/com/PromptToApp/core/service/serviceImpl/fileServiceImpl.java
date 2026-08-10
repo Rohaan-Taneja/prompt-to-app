@@ -13,20 +13,20 @@ import com.PromptToApp.core.repository.projectRepository;
 import com.PromptToApp.core.repository.userRepository;
 import com.PromptToApp.core.service.fileService;
 import com.PromptToApp.core.service.minioService;
-import io.minio.Result;
-import io.minio.messages.Item;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Value;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.stereotype.Service;
 
 import java.io.ByteArrayInputStream;
 import java.io.InputStream;
 import java.nio.charset.StandardCharsets;
-import java.util.ArrayList;
+import java.nio.file.Files;
+import java.nio.file.Path;
+import java.nio.file.Paths;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Stream;
 
 @Service
 @RequiredArgsConstructor
@@ -50,6 +50,7 @@ public class fileServiceImpl implements fileService {
 
     /**
      * we will give project id and normal file tree
+     * we will give file_id + file_path(normal , excluding any project name it in etc)
      */
     public List<FileResDto> getProjectFilesTree(UUID projectId) {
 
@@ -58,23 +59,41 @@ public class fileServiceImpl implements fileService {
 
     }
 
-    public ProjectFileDetailsResDto getProjectFileContent(UUID fileId) {
+    /**
+     *
+     * @param fileIds , list of file ids that we want
+     * @return
+     */
+    public List<ProjectFileDetailsResDto> getProjectFileContent(List<UUID> fileIds) {
 
-        ProjectFile file = projectFileRepo.findById(fileId).orElseThrow(() -> new ResourceNotFoundException("project with file id = " + fileId + " does not exist"));
-
-        try {
-
-            String fileContent = minioService.getFile(file.getMinIoObjectKey());
-
-            ProjectFileDetailsResDto fileDetailsResDto = fileMapper.toProjectFileDetailDto(file);
-
-            fileDetailsResDto.setContent(fileContent);
-            return fileDetailsResDto;
+        List<ProjectFile> files = projectFileRepo.findAllByIdIn(fileIds);
 
 
-        } catch (Exception e) {
-            throw new ResourceNotFoundException(e.toString());
-        }
+        return files.stream()
+                .map(file -> {
+
+                    ProjectFileDetailsResDto fileDetailsResDto;
+
+                    try {
+
+//                            get file content
+                        String fileContent = minioService.getFile(file.getMinIoObjectKey());
+
+//                            create file object dto
+                        fileDetailsResDto = fileMapper.toProjectFileDetailDto(file);
+
+//                            add file content to dto
+                        fileDetailsResDto.setContent(fileContent);
+
+
+                    } catch (Exception e) {
+                        throw new ResourceNotFoundException(e.toString());
+                    }
+
+                    return fileDetailsResDto;
+
+
+                }).toList();
 
     }
 
@@ -212,56 +231,54 @@ public class fileServiceImpl implements fileService {
 
     /**
      *
-     * @param projectId new project just created
-     *                  we will be having a React template , so we need to copy those all files for this projectId
-     *                  1) for minio
-     *                  2) and after copying and pasting all files , we Will save all projectFile OBJECT TO DB
+     * @return this is an admin function and this we will use to copy all the react template files to minio
+     * so we will get path of React folder
+     * then we will loop over the folder structure
+     * and get each file and push it to minio
+     *
      */
-    @Async("background-task-executor-thread-pool")
-    public void copyReactTemplateForNewProject(UUID projectId, String projectName, UUID userId) {
+    public boolean copyReactTemplateToMinio() {
 
-        List<ProjectFile> filesToSave = new ArrayList<>();
+        Path reactTemplatePath = Paths.get("../react_template");
 
-        Project project = projectRepo.getReferenceById(projectId);
+        log.info("Working Directory: {}", Paths.get("").toAbsolutePath());
+        log.info("React Template Path: {}", reactTemplatePath.toAbsolutePath());
+        log.info("Exists: {}", Files.exists(reactTemplatePath));
 
-        User user = userRepo.getReferenceById(userId);
+        try (Stream<Path> paths = Files.walk(reactTemplatePath)) {
+            paths.filter(Files::isRegularFile)
+                    .forEach(path -> {
+                                log.info("path = {}", path);
 
-        try {
-            log.info("this is the file saving background thread {}", Thread.currentThread().getName());
+                                String minioFilePath = reactTemplateStartsWith + "/" + path.toString().split("../react_template/")[1];
 
-//            getting all template files
-            Iterable<Result<Item>> templateFiles = minioService.getAllFileStartsWith(reactTemplateStartsWith);
+                                log.info("this is the absolute file path to store in minio {}", minioFilePath);
 
-            log.info("no of files {}" , templateFiles);
+                                byte[] fileContent = null;
+                                try {
+                                    fileContent = Files.readAllBytes(path);
 
-            for (Result<Item> file : templateFiles) {
+                                    InputStream stream = new ByteArrayInputStream(fileContent);
 
-//                filepath -> react-templa
-                String source = file.get().objectName();
+                                    minioService.uploadFile(minioFilePath, stream, getFileType(minioFilePath));
+                                } catch (Exception e) {
+                                    throw new RuntimeException("error" + e.toString());
+                                }
 
-//                we will replace react-template/ with projects/project_id
-
-
-
-                String reactFile = source.split(reactTemplateStartsWith + "/")[1];
-                String destination = "projects/" + projectId + "/" + reactFile;
-
-//              copy pasting the file from template to /for user new project
-                minioService.copyObject(source, destination);
-
-//                on every minio me addition we will save files to this array
-                filesToSave.add(
-                        ProjectFile.builder().name(projectName).project(project).path(reactFile).minIoObjectKey(destination).createdBy(user).lastUpdatedBy(user).build()
-                );
+                            }
 
 
-            }
+                    );
 
-            fileRepo.saveAll(filesToSave);
 
-        } catch (Exception exception) {
-            throw new RuntimeException("exception");
+        } catch (Exception e) {
+            throw new customInternalServerError(e.toString());
+
         }
+
+
+        return true;
+
 
     }
 

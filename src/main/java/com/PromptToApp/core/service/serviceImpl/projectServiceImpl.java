@@ -18,11 +18,11 @@ import com.PromptToApp.core.repository.projectRepository;
 import com.PromptToApp.core.repository.userRepository;
 import com.PromptToApp.core.repository.userSubscriptionRepository;
 import com.PromptToApp.core.service.fileService;
+import com.PromptToApp.core.service.initializeReactTemplateForNewProject;
 import com.PromptToApp.core.service.projectService;
 import jakarta.transaction.Transactional;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
-import org.springframework.scheduling.annotation.Async;
 import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.stereotype.Service;
 
@@ -42,6 +42,8 @@ public class projectServiceImpl implements projectService {
     private final projectRepository projectRepo;
 
     private final fileService fileService;
+
+    private final initializeReactTemplateForNewProject initializeReactTemplateForNewProject;
 
     private final projectMemberRepository projectMemberRepo;
 
@@ -78,14 +80,14 @@ public class projectServiceImpl implements projectService {
 
         projectMemberRepo.save(ownerMember);
 
-        log.info("this is the thread for syn task{}" ,Thread.currentThread().getName());
+        log.info("this is the thread for syn task{}", Thread.currentThread().getName());
         /**
          * todo
          * copy whole react template files for the new project
 
          */
 
-        fileService.copyReactTemplateForNewProject(saved_project.getId() ,saved_project.getName() , user_id);
+        initializeReactTemplateForNewProject.copyReactTemplateForNewProject(saved_project.getId(), saved_project.getName(), user_id);
 
         return ProjectBasicDetailsResponseDto.builder().project_id(saved_project.getId()).name(saved_project.getName()).description(saved_project.getName()).build();
     }
@@ -133,7 +135,6 @@ public class projectServiceImpl implements projectService {
 
 
     }
-
 
 
 }

@@ -27,14 +27,14 @@ public class fileController {
     }
 
 
-    @GetMapping("file-content/{file-id}")
-    public ResponseEntity<ProjectFileDetailsResDto> getProjectFileContent(@PathVariable("project-id") UUID projectId , @PathVariable("file-id") UUID fileId ){
-
-        UUID userId = UUID.randomUUID();
-
-        return ResponseEntity.ok(file_service.getProjectFileContent(fileId));
-
-    }
+//    @GetMapping("file-content/{file-id}")
+//    public ResponseEntity<ProjectFileDetailsResDto> getProjectFileContent(@PathVariable("project-id") UUID projectId , @PathVariable("file-id") UUID fileId ){
+//
+//        UUID userId = UUID.randomUUID();
+//
+//        return ResponseEntity.ok(file_service.getProjectFileContent(fileId));
+//
+//    }
 
 
     @PatchMapping("update-file-content/{file-id}")

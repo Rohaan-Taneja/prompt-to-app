@@ -1,4 +1,4 @@
-package com.PromptToApp.core.advisors;
+package com.PromptToApp.core.advisors_and_tools;
 
 import com.PromptToApp.core.Dto.Res.FileResDto;
 import com.PromptToApp.core.service.fileService;
@@ -40,7 +40,8 @@ public class projectTreeAdvisor implements StreamAdvisor {
         log.info("this is the file tree response {}" , fileTree);
 
         String fileTreePrompt = """
-                Current Project Tree:
+                \n
+                --------------Current Project Tree--------------
                 
                 %s
                 """.formatted(fileTree);

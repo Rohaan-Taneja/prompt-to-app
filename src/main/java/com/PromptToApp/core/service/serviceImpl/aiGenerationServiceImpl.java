@@ -24,6 +24,7 @@ import reactor.core.publisher.Flux;
 import reactor.core.publisher.Mono;
 import reactor.core.scheduler.Schedulers;
 
+import java.util.Map;
 import java.util.UUID;
 import java.util.concurrent.atomic.AtomicInteger;
 import java.util.regex.Matcher;
@@ -52,7 +53,7 @@ public class aiGenerationServiceImpl implements aiGenerationService {
 
     private final Pattern chatPattern = Pattern.compile("<chat>(.*?)</chat>", Pattern.CASE_INSENSITIVE | Pattern.DOTALL);
     private final Pattern filePattern = Pattern.compile("<file\\s+path=\"([^\"]+)\">(.*?)</file>", Pattern.DOTALL); // dotall is for multiline matcher
-
+    private final Pattern chatEventPattern = Pattern.compile("<chatEvent>(.*?)</chatEvent>", Pattern.DOTALL);
 
 //    the user should be a project member of this project and should HAVE WRITE ACCESS
 
@@ -77,7 +78,8 @@ public class aiGenerationServiceImpl implements aiGenerationService {
     @PreAuthorize("@securityAccessChecker.checkUserAccessAndEditToProject(#projectId)")
     public Flux<String> getChatResponse(UUID projectId, String chatMessage) {
 
-        log.info("I am starting the ai respons service");
+
+        log.info("I am starting the ai response service");
         UUID userId = authUtilService.getUserId();
         log.info("got user from auth utils service");
         SubscriptionPlan userSubscriptionPlan = userSubscriptionRepo.getByUserIdAndStatus(userId, SubscriptionStatus.ACTIVE).orElseThrow(() -> new ResourceNotFoundException("no active user subscription found"));
@@ -105,15 +107,33 @@ public class aiGenerationServiceImpl implements aiGenerationService {
         /**
          * chat client details
          * user prompt , system prompt , get project tree
+
          */
+
+
+        long start = System.currentTimeMillis();
+
+        log.info("Starting LLM request");
+
+        UUID chatId = UUID.randomUUID();
 
         Flux<ChatResponse> chatResponseFlux = chatClient.prompt()
                 .user(chatMessage)
-                .advisors(a -> a.param("projectId" , projectId)) // from here we can do task between user prompt given adn llm receiving the prompt
+                .advisors(a -> {
+                    a.param("projectId", projectId);
+                    a.param("chatId" , chatId);
+                }) // from here we can do task between user prompt given adn llm receiving the prompt
+                .toolContext(Map.of(
+                "projectId", projectId,
+                "conversationId", chatId
+        ))
                 .stream()
                 .chatResponse()
                 .doOnNext(stream_message ->
                         {
+
+                            log.info("Received chunk after {} ms",
+                                    System.currentTimeMillis() - start);
 //                            System.out.println("current thread running in rector flow , do on next" + Thread.currentThread().getName());
 //                            log.info("this is he chat stream data {}", stream_message.getResults());
 
@@ -138,7 +158,13 @@ public class aiGenerationServiceImpl implements aiGenerationService {
                 )
                 .doOnComplete(() -> {
 
+
+                    log.info("LLM stream completed in {} ms",
+                            System.currentTimeMillis() - start);
+
                     System.out.println("current thread running in rector flow , do on complete flow" + Thread.currentThread().getName());
+
+                    log.info("this is the complete response {}" , chat_complete_response);
 
 //                    3 options
 //                        1) run directly saveChanges (it will block the reactor )
@@ -159,7 +185,11 @@ public class aiGenerationServiceImpl implements aiGenerationService {
                         "we got error in chat stream of project {} this error {}",
                         projectId,
                         error.getLocalizedMessage()
-                ));
+                ))
+                .doFinally(data ->
+
+                        log.info("we are finally done with the stream {}" , data)
+                        );
 
 
         return chatResponseFlux.map(data -> data.getResult().getOutput().getText());
@@ -185,12 +215,13 @@ public class aiGenerationServiceImpl implements aiGenerationService {
         /**
          * so the ai_response we will get it
          *
+         * <chatEvent> reading files , editing file etc</chatEvent>
          * <chat> hello i am ai assistance response , save me in chat of project by thi user</chat>
          * <file file_path = "comple file path of the file which got edited"> hello I am the file content , parse me and save me in db</file>
 
          */
 
-        log.info("so we are trying to save files and chatsx");
+        log.info("so we are trying to save files and chats");
         String aiStringResponse = ai_response.toString();
 
 //        this will do both chat saving(assistant response + user prompt) and updating token used by the user prompt
@@ -230,7 +261,11 @@ public class aiGenerationServiceImpl implements aiGenerationService {
     private void saveChatsAndUsageLogs(String aiStringResponse, String userPrompt, UUID projectId, UUID user_id, Integer totalTokenUsed) {
 
         log.info("i am in chat save function {}", aiStringResponse);
-//        find file and save it in db
+
+
+//        ----- FINDING AND SAVING CHAT--------
+
+//        find chat and save it in db
         Matcher chatMatched = chatPattern.matcher(aiStringResponse);
 
         log.info("I am just after the chat matched {}", chatMatched.toString());
@@ -246,8 +281,37 @@ public class aiGenerationServiceImpl implements aiGenerationService {
 
         }
 
+
+//        ------- FINDING AND SAVING CHAT EVENT---------
+
+//        find chat and save it in db
+        Matcher chatEventMatched = chatEventPattern.matcher(aiStringResponse);
+
+        log.info("I am just after the chat event matched {}", chatMatched.toString());
+
+//        everytime it finds a match to <chatEvent>...</chatEvent> , it will return us the data
+        while (chatEventMatched.find()) {
+            log.info("found 1 chat event");
+            String chatEventMessage = chatEventMatched.group(1);
+
+//            save chat/ai response
+            chatService.saveChat(ChatBy.AI_EVENT, projectId, chatEventMessage, totalTokenUsed, user_id);
+
+
+        }
+
+
+
+//      -----SAVING USER CHAT--------
+
+
 //        saving user message/prompt
         chatService.saveChat(ChatBy.USER, projectId, userPrompt, totalTokenUsed, user_id);
+
+
+
+//        ----- SAVING USAGE LOGS / TOKEN CONSUMED BY THIS PROMPT BY USER ---------
+
 
         //           save token used by user prompt
         usageLogsService.addUserUsageLogs(projectId, user_id, totalTokenUsed, userPrompt);

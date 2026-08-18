@@ -32,5 +32,5 @@ public class ChatMessage extends BaseEntity {
     private Integer tokenConsumed;
 
     @Enumerated(EnumType.STRING)
-    private ChatBy chatBy;
+    private ChatBy chatBy; // USER / AI / AI_EVENT
 }

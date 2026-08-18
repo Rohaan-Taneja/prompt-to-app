@@ -37,7 +37,7 @@ public class projectTreeAdvisor implements StreamAdvisor {
 
         List<FileResDto> fileTree = fileService.getProjectFilesTree((UUID) chatClientRequest.context().get("projectId"));
 
-        log.info("this is the file tree response {}" , fileTree);
+        log.info("this is the file tree response {}" , fileTree + "    " + "\n"  + "\n");
 
         String fileTreePrompt = """
                 \n

@@ -44,7 +44,7 @@ public class projectController {
 
 
     @GetMapping("/get-all-projects")
-    public ResponseEntity<List<ProjectBasicDetailsResponseDto>> getUserAllProjects(@RequestBody() newProjectReqDto newProjectDetails) {
+    public ResponseEntity<List<ProjectBasicDetailsResponseDto>> getUserAllProjects() {
 
         UUID userId = auth_util_service.getUserId();
 
